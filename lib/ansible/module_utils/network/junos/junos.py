@@ -101,6 +101,11 @@ def get_capabilities(module):
     return module._junos_capabilities
 
 
+def is_netconf(module):
+    capabilities = get_capabilities(module)
+    return True if capabilities.get('network_api') == 'netconf' else False
+
+
 def _validate_rollback_id(module, value):
     try:
         if not 0 <= int(value) <= 49:
@@ -124,7 +129,7 @@ def load_configuration(module, candidate=None, action='merge', rollback=None, fo
         module.fail_json(msg='invalid action for format json')
     elif format in ('text', 'xml') and action not in ACTIONS:
         module.fail_json(msg='invalid action format %s' % format)
-    if action == 'set' and not format == 'text':
+    if action == 'set' and format != 'text':
         module.fail_json(msg='format must be text when action is set')
 
     conn = get_connection(module)
@@ -158,14 +163,16 @@ def get_configuration(module, compare=False, format='xml', rollback='0', filter=
     return reply
 
 
-def commit_configuration(module, confirm=False, check=False, comment=None, confirm_timeout=None, synchronize=False,
-                         at_time=None, exit=False):
+def commit_configuration(module, confirm=False, check=False, comment=None, confirm_timeout=None, synchronize=False, at_time=None):
     conn = get_connection(module)
     try:
         if check:
             reply = conn.validate()
         else:
-            reply = conn.commit(confirmed=confirm, timeout=confirm_timeout, comment=comment, synchronize=synchronize, at_time=at_time)
+            if is_netconf(module):
+                reply = conn.commit(confirmed=confirm, timeout=confirm_timeout, comment=comment, synchronize=synchronize, at_time=at_time)
+            else:
+                reply = conn.commit(comment=comment, confirmed=confirm, at_time=at_time, synchronize=synchronize)
     except ConnectionError as exc:
         module.fail_json(msg=to_text(exc, errors='surrogate_then_replace'))
     return reply
@@ -264,7 +271,7 @@ def map_params_to_obj(module, param_to_xpath_map, param=None):
         'value': Value of param.
         'tag_only': Value is indicated by tag only in xml hierarchy.
         'leaf_only': If operation is to be added at leaf node only.
-        'value_req': If value(text) is requried for leaf node.
+        'value_req': If value(text) is required for leaf node.
         'is_key': If the field is key or not.
     eg: Output
     {

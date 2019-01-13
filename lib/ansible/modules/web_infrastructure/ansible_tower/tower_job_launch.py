@@ -62,6 +62,7 @@ EXAMPLES = '''
   tower_job_launch:
     job_template: "My Job Template"
   register: job
+
 - name: Wait for job max 120s
   tower_job_wait:
     job_id: job.id
@@ -77,7 +78,7 @@ id:
 status:
     description: status of newly launched job
     returned: success
-    type: string
+    type: str
     sample: pending
 '''
 
@@ -86,7 +87,7 @@ from ansible.module_utils.ansible_tower import TowerModule, tower_auth_config, t
 
 try:
     import tower_cli
-    import tower_cli.utils.exceptions as exc
+    import tower_cli.exceptions as exc
 
     from tower_cli.conf import settings
 except ImportError:
